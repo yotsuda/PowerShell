@@ -114,3 +114,45 @@ Describe "Get-PSDrive for network path" -Tags "CI","RequireAdminOnWindows" {
         }
     }
 }
+
+Describe "Get-PSDrive with lowercase drive letters" -Tags "CI" {
+    It "Should not return duplicate entries for lowercase drive letters created with subst" -Skip:(-not $IsWindows) {
+        $UsedDrives  = Get-PSDrive | Select-Object -ExpandProperty Name
+        $PSDriveName = 'd'..'z' | Where-Object -FilterScript {$_ -notin $UsedDrives} | Get-Random
+        
+        # Create a substituted drive with lowercase letter
+        subst "${PSDriveName}:" C:\Windows
+        
+        try {
+            # Get-PSDrive should return only one entry, not two (lowercase and uppercase)
+            # Get-PSDrive should return only one entry, not two (lowercase and uppercase)
+            $drives = Get-PSDrive $PSDriveName
+            $drives.Count | Should -Be 1
+            # The drive should exist (regardless of case)
+            $drives.Name | Should -Not -BeNullOrEmpty
+        }
+        finally {
+            # Clean up
+            subst "${PSDriveName}:" /D
+        }
+    }
+    
+    It "Should not return duplicate entries when listing all drives with lowercase subst drive" -Skip:(-not $IsWindows) {
+        $UsedDrives  = Get-PSDrive | Select-Object -ExpandProperty Name
+        $PSDriveName = 'd'..'z' | Where-Object -FilterScript {$_ -notin $UsedDrives} | Get-Random
+        
+        # Create a substituted drive with lowercase letter
+        subst "${PSDriveName}:" C:\Windows
+        
+        try {
+            # Get all drives and count how many have the same name (case-insensitive)
+            $allDrives = Get-PSDrive
+            $drivesWithSameName = $allDrives | Where-Object { $_.Name -eq $PSDriveName }
+            $drivesWithSameName.Count | Should -Be 1
+        }
+        finally {
+            # Clean up
+            subst "${PSDriveName}:" /D
+        }
+    }
+}

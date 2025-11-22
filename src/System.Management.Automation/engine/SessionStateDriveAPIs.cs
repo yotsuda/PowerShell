@@ -1308,7 +1308,7 @@ namespace System.Management.Automation
         /// </exception>
         internal Collection<PSDriveInfo> Drives(string scope)
         {
-            Dictionary<string, PSDriveInfo> driveTable = new Dictionary<string, PSDriveInfo>();
+            Dictionary<string, PSDriveInfo> driveTable = new Dictionary<string, PSDriveInfo>(StringComparer.OrdinalIgnoreCase);
 
             SessionStateScope startingScope = _currentScope;
 
@@ -1320,7 +1320,7 @@ namespace System.Management.Automation
             SessionStateScopeEnumerator scopeEnumerator =
                 new SessionStateScopeEnumerator(startingScope);
             DriveInfo[] alldrives = DriveInfo.GetDrives();
-            Collection<string> driveNames = new Collection<string>();
+            HashSet<string> driveNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (DriveInfo drive in alldrives)
             {
                 driveNames.Add(drive.Name.Substring(0, 1));
