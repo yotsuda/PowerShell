@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
 using System.Threading;
 
@@ -209,6 +210,7 @@ namespace Microsoft.PowerShell.Commands
                 options.Converters.Add(new JsonConverterNullString());
                 options.Converters.Add(new JsonConverterDBNull());
                 options.Converters.Add(new JsonConverterPSObject(cmdlet, maxDepth, basePropertiesOnly: false));
+                options.Converters.Add(new TruncatingConverterFactory(maxDepth, cmdlet));
                 options.Converters.Add(new JsonConverterRawObject(cmdlet, maxDepth));
                 options.Converters.Add(new JsonConverterJObject());
 
@@ -219,8 +221,8 @@ namespace Microsoft.PowerShell.Commands
                 }
                 else
                 {
-                    var wrapper = new RawObjectWrapper(objectToProcess);
-                    return System.Text.Json.JsonSerializer.Serialize(wrapper, typeof(RawObjectWrapper), options);
+                    // TruncatingConverterFactory handles depth control for raw objects
+                    return System.Text.Json.JsonSerializer.Serialize(objectToProcess, objectToProcess.GetType(), options);
                 }
             }
             catch (OperationCanceledException)
@@ -809,6 +811,124 @@ namespace Microsoft.PowerShell.Commands
             }
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// A factory that truncates JSON serialization at a specific depth
+    /// by writing the object's .ToString() value instead of recursing deeper.
+    /// Based on iSazonov's proposal.
+    /// </summary>
+    internal sealed class TruncatingConverterFactory : JsonConverterFactory
+    {
+        private readonly int _maxDepth;
+        private readonly PSCmdlet? _cmdlet;
+        private JsonSerializerOptions? _bypassOptions;
+
+        public TruncatingConverterFactory(int maxDepth, PSCmdlet? cmdlet)
+        {
+            _maxDepth = maxDepth;
+            _cmdlet = cmdlet;
+        }
+
+        public override bool CanConvert(Type typeToConvert)
+        {
+            // Skip types that have dedicated converters
+            if (typeToConvert == typeof(PSObject) ||
+                typeToConvert == typeof(RawObjectWrapper) ||
+                typeToConvert == typeof(BigInteger) ||
+                typeToConvert == typeof(double) ||
+                typeToConvert == typeof(float) ||
+                typeToConvert == typeof(System.Management.Automation.Language.NullString) ||
+                typeToConvert == typeof(DBNull) ||
+                typeToConvert == typeof(Newtonsoft.Json.Linq.JObject))
+            {
+                return false;
+            }
+
+            // Use STJ's internal classification to target only "compound" types
+            var typeInfo = JsonSerializerOptions.Default.GetTypeInfo(typeToConvert);
+
+            return typeInfo.Kind switch
+            {
+                JsonTypeInfoKind.Object => true,
+                JsonTypeInfoKind.Enumerable => true,
+                JsonTypeInfoKind.Dictionary => true,
+                _ => false
+            };
+        }
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
+        {
+            // Create bypass options to resolve 'default' converters
+            if (_bypassOptions is null)
+            {
+                var clone = new JsonSerializerOptions(options);
+                // Remove THIS factory from the clone to find the original intended converter
+                for (int i = clone.Converters.Count - 1; i >= 0; i--)
+                {
+                    if (clone.Converters[i] is TruncatingConverterFactory)
+                    {
+                        clone.Converters.RemoveAt(i);
+                    }
+                }
+
+                _bypassOptions = clone;
+            }
+
+            // Get the default converter from the bypass cache
+            JsonConverter defaultConverter = _bypassOptions.GetConverter(typeToConvert);
+
+            // Instantiate the generic wrapper that handles the depth logic
+            return (JsonConverter)Activator.CreateInstance(
+                typeof(DepthLimitedConverter<>).MakeGenericType(typeToConvert),
+                _maxDepth,
+                _cmdlet,
+                defaultConverter)!;
+        }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:Avoid uninstantiated internal classes", Justification = "Instantiated via Activator.CreateInstance")]
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode", Justification = "Activator.CreateInstance uses MakeGenericType with known types")]
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050:RequiresDynamicCode", Justification = "Activator.CreateInstance uses MakeGenericType with known types")]
+        private sealed class DepthLimitedConverter<T> : JsonConverter<T>
+        {
+            private readonly int _maxDepth;
+            private readonly PSCmdlet? _cmdlet;
+            private readonly JsonConverter<T> _defaultConverter;
+            private bool _warningWritten;
+
+            public DepthLimitedConverter(int maxDepth, PSCmdlet? cmdlet, JsonConverter defaultConverter)
+            {
+                _maxDepth = maxDepth;
+                _cmdlet = cmdlet;
+                _defaultConverter = (JsonConverter<T>)defaultConverter;
+            }
+
+            public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+            {
+                // writer.CurrentDepth is the source of truth for the current position in the tree
+                if (writer.CurrentDepth >= _maxDepth)
+                {
+                    // Write warning once
+                    if (!_warningWritten && _cmdlet is not null)
+                    {
+                        _cmdlet.WriteWarning("Serialization depth limit reached. Some nested objects may be truncated.");
+                        _warningWritten = true;
+                    }
+
+                    // Graceful stop: write the string representation instead of recursing
+                    writer.WriteStringValue(value?.ToString() ?? "null");
+                    return;
+                }
+
+                // Use the cached internal converter to continue normal serialization
+                _defaultConverter.Write(writer, value, options);
+            }
+
+            public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
