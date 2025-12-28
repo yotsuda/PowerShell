@@ -211,7 +211,6 @@ namespace Microsoft.PowerShell.Commands
                 options.Converters.Add(new JsonConverterDBNull());
                 options.Converters.Add(new JsonConverterPSObject(cmdlet, maxDepth, basePropertiesOnly: false));
                 options.Converters.Add(new TruncatingConverterFactory(maxDepth, cmdlet));
-                options.Converters.Add(new JsonConverterRawObject(cmdlet, maxDepth));
                 options.Converters.Add(new JsonConverterJObject());
 
                 // Distinguish between PSObject (Extended/Adapted properties) and raw object (Base only)
@@ -384,8 +383,8 @@ namespace Microsoft.PowerShell.Commands
                 }
                 else
                 {
-                    // Raw object: delegate to JsonConverterRawObject (Base properties only)
-                    System.Text.Json.JsonSerializer.Serialize(writer, new RawObjectWrapper(item), typeof(RawObjectWrapper), options);
+                    // Raw object: delegate to TruncatingConverterFactory
+                    System.Text.Json.JsonSerializer.Serialize(writer, item, item.GetType(), options);
                 }
             }
 
@@ -438,8 +437,8 @@ namespace Microsoft.PowerShell.Commands
                 }
                 else
                 {
-                    // Not a native scalar type - delegate to JsonConverterRawObject (Base properties only)
-                    System.Text.Json.JsonSerializer.Serialize(writer, new RawObjectWrapper(value), typeof(RawObjectWrapper), options);
+                    // Not a native scalar type - delegate to TruncatingConverterFactory
+                    System.Text.Json.JsonSerializer.Serialize(writer, value, value.GetType(), options);
                 }
             }
         }
@@ -513,8 +512,8 @@ namespace Microsoft.PowerShell.Commands
                 }
                 else
                 {
-                    // Raw object: delegate to JsonConverterRawObject (Base properties only)
-                    System.Text.Json.JsonSerializer.Serialize(writer, new RawObjectWrapper(value), typeof(RawObjectWrapper), options);
+                    // Raw object: delegate to TruncatingConverterFactory
+                    System.Text.Json.JsonSerializer.Serialize(writer, value, value.GetType(), options);
                 }
             }
             catch
@@ -701,45 +700,6 @@ namespace Microsoft.PowerShell.Commands
     }
 
     /// <summary>
-    /// Wrapper class for raw .NET objects to distinguish them from PSObjects at the type level.
-    /// Inherits from PSObject to avoid rewrapping when passed to JsonConverterPSObject.
-    /// </summary>
-    internal sealed class RawObjectWrapper : PSObject
-    {
-        public RawObjectWrapper(object value) : base(value)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Custom JsonConverter for RawObjectWrapper that delegates to JsonConverterPSObject with base properties only.
-    /// </summary>
-    /// <remarks>
-    /// This converter wraps raw objects (non-PSObject) and serializes them with only base .NET properties,
-    /// excluding PowerShell extended/adapted properties. This maintains V1 compatibility for nested raw objects.
-    /// </remarks>
-    internal sealed class JsonConverterRawObject : System.Text.Json.Serialization.JsonConverter<RawObjectWrapper>
-    {
-        private readonly JsonConverterPSObject _psoConverter;
-
-        public JsonConverterRawObject(PSCmdlet? cmdlet, int maxDepth)
-        {
-            _psoConverter = new JsonConverterPSObject(cmdlet, maxDepth, basePropertiesOnly: true);
-        }
-
-        public override RawObjectWrapper? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Write(Utf8JsonWriter writer, RawObjectWrapper wrapper, JsonSerializerOptions options)
-        {
-            // RawObjectWrapper inherits from PSObject, so no rewrapping needed
-            _psoConverter.Write(writer, wrapper, options);
-        }
-    }
-
-    /// <summary>
     /// Shared helper methods for JSON serialization.
     /// </summary>
     internal static class JsonSerializerHelper
@@ -835,7 +795,6 @@ namespace Microsoft.PowerShell.Commands
         {
             // Skip types that have dedicated converters
             if (typeToConvert == typeof(PSObject) ||
-                typeToConvert == typeof(RawObjectWrapper) ||
                 typeToConvert == typeof(BigInteger) ||
                 typeToConvert == typeof(double) ||
                 typeToConvert == typeof(float) ||
