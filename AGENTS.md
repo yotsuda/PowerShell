@@ -168,6 +168,8 @@ git commit -m "Fix description (#ISSUE_NUMBER)"
 
 **The PR is considered incomplete without all of these sections.**
 
+4. When all sections are complete, mark the PR as **ready for review** (not draft).
+
 ---
 
 ## Firewall Notes (Copilot Coding Agent)
