@@ -97,18 +97,32 @@ invoke_expression: & (Get-PSOutput) -Command '$PSVersionTable'
 invoke_expression: Start-PSBuild -UseNuGetOrg
 ```
 
-### 5b. Run the SAME reproduction script from Step 2, but with the built pwsh
+### 5b. Switch to the built pwsh
+
+Start a new process using the built pwsh binary with PowerShell.MCP loaded, then kill all other pwsh processes so the Proxy reconnects to the built pwsh:
 
 ```
-invoke_expression: & (Get-PSOutput) -Command '<the same code you ran in Step 2>'
+invoke_expression: $builtPwsh = Get-PSOutput
+invoke_expression: $newProc = Start-Process $builtPwsh -ArgumentList '-NoExit', '-Command', 'Import-Module PowerShell.MCP' -PassThru
+invoke_expression: Get-Process pwsh | Where-Object { $_.Id -ne $newProc.Id } | Stop-Process -Force
 ```
 
-### 5c. Confirm the output now matches the issue's "Expected behavior"
+After this, the Proxy automatically reconnects to the built pwsh. All subsequent `invoke_expression` calls run directly in the built pwsh session.
+
+### 5c. Run the SAME reproduction script from Step 2
+
+```
+invoke_expression: <the same code you ran in Step 2>
+```
+
+No need for `& (Get-PSOutput) -Command` — you are already inside the built pwsh.
+
+### 5d. Confirm the output now matches the issue's "Expected behavior"
 
 - If it matches → the fix is correct. Save the output and proceed to Step 6.
 - If it still shows the bug → your fix is incomplete. Go back to Step 4.
 
-### 5d. Save the EXACT output
+### 5e. Save the EXACT output
 
 This output goes in the **Verification** section of the PR description. It must clearly show the bug is fixed (compare with Step 2 output).
 
