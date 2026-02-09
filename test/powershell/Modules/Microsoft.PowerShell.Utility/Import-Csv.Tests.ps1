@@ -181,4 +181,12 @@ Describe "Import-Csv with different newlines" -Tags "CI" {
         $returnObject[1].h2 | Should -Be 22
         $returnObject[1].h3 | Should -Be 23
     }
+
+    It "Test import-csv with -UseCulture:`$false uses default comma delimiter" {
+        $csvFile = Join-Path $TestDrive -ChildPath $((New-Guid).Guid)
+        "H1,H2`nV1,V2" | Out-File -FilePath $csvFile
+        $returnObject = Import-Csv -Path $csvFile -UseCulture:$false
+        $returnObject.H1 | Should -Be "V1"
+        $returnObject.H2 | Should -Be "V2"
+    }
 }

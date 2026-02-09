@@ -79,4 +79,10 @@ Describe "ConvertFrom-Csv DRT Unit Tests" -Tags "CI" {
         $result[1].Header1 | Should -BeExactly "1"
         $result[1].Header2 | Should -BeExactly "2"
     }
+
+    It "Test ConvertFrom-Csv with -UseCulture:`$false uses default comma delimiter" {
+        $result = "H1,H2`nV1,V2" | ConvertFrom-Csv -UseCulture:$false
+        $result.H1 | Should -Be "V1"
+        $result.H2 | Should -Be "V2"
+    }
 }
