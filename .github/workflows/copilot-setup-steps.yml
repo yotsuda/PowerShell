@@ -1,26 +1,19 @@
 name: "Copilot Setup Steps"
 
-# Allow testing of the setup steps from your repository's "Actions" tab.
 on:
   workflow_dispatch:
-
-  pull_request:
-    branches:
-      - master
+  push:
     paths:
-      - ".github/workflows/copilot-setup-steps.yml"
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
 
 jobs:
-  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
-  # See https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent
   copilot-setup-steps:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-
-    # You can define any steps you want, and they will run before the agent starts.
-    # If you do not check out your code, Copilot will do this for you.
     steps:
       - uses: actions/checkout@v6
         with:
@@ -59,3 +52,13 @@ jobs:
           Find-DotNet -SetDotnetRoot
           Write-LogGroupEnd -Title $title
         shell: pwsh
+
+      - name: Install PowerShell.MCP
+        shell: pwsh
+        run: |
+          Install-PSResource -Name 'PowerShell.MCP' -Scope CurrentUser -TrustRepository
+          $proxy = Get-ChildItem -Path ($env:PSModulePath -split ':') -Filter 'PowerShell.MCP.Proxy' -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match 'linux-x64' } |
+            Select-Object -First 1 -ExpandProperty FullName
+          chmod +x $proxy
+          New-Item -ItemType SymbolicLink -Path '/usr/local/bin/PowerShell.MCP.Proxy' -Target $proxy -Force
