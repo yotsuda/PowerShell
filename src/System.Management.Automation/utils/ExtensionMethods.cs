@@ -85,12 +85,12 @@ namespace System.Management.Automation
 
         internal static bool IsNumeric(this Type type)
         {
-            return LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
+            return (type.FullName == "System.Int128" || type.FullName == "System.UInt128") || LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
         }
 
         internal static bool IsNumericOrPrimitive(this Type type)
         {
-            return type.IsPrimitive || LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
+            return (type.FullName == "System.Int128" || type.FullName == "System.UInt128") || type.IsPrimitive || LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
         }
 
         internal static bool IsSafePrimitive(this Type type)
@@ -105,7 +105,7 @@ namespace System.Management.Automation
 
         internal static bool IsInteger(this Type type)
         {
-            return LanguagePrimitives.IsInteger(LanguagePrimitives.GetTypeCode(type));
+            return (type.FullName == "System.Int128" || type.FullName == "System.UInt128") || LanguagePrimitives.IsInteger(LanguagePrimitives.GetTypeCode(type));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

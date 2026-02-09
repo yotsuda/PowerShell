@@ -2444,6 +2444,16 @@ namespace System.Management.Automation.Language
                     argType = typeof(ulong);
                 }
             }
+            else if (target.LimitType.FullName == "System.Int128" || arg.LimitType.FullName == "System.Int128")
+            {
+                opImplType = typeof(Int128Ops);
+                argType = typeof(System.Int128);
+            }
+            else if (target.LimitType.FullName == "System.UInt128" || arg.LimitType.FullName == "System.UInt128")
+            {
+                opImplType = typeof(UInt128Ops);
+                argType = typeof(System.UInt128);
+            }
             else if (opTypeCode == TypeCode.Decimal)
             {
                 if (methodName.StartsWith("Compare", StringComparison.Ordinal))
