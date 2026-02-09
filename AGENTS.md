@@ -41,15 +41,29 @@ Read the issue description. Identify affected source files.
 
 ## Step 2: Reproduce the Issue — BEFORE Any Code Changes
 
-**CRITICAL: You MUST do this BEFORE writing any fix code.**
+**CRITICAL: Do NOT touch any source code until this step is complete.**
 
-Write and run a reproduction script that demonstrates the current (broken) behavior using the system-installed pwsh. This confirms the bug exists and gives you a baseline to compare against after the fix.
+### 2a. Copy the reproduction code from the issue
+
+Every bug issue has a "Steps to reproduce" section with PowerShell code. Copy that code exactly.
+
+### 2b. Execute it with the system-installed pwsh
 
 ```
-invoke_expression: <reproduction script that shows the bug>
+invoke_expression: <paste the code from "Steps to reproduce">
 ```
 
-**Save the output for the PR.** It must show the incorrect behavior. Do NOT proceed to Step 3 until you have reproduction output.
+### 2c. Confirm the output matches the issue's "Actual behavior"
+
+- If the output matches the "Actual behavior" → the bug is confirmed. Save the output and proceed to Step 3.
+- If the output matches the "Expected behavior" → the bug may be fixed already. Comment on the issue and STOP.
+- If the code errors out → adapt the script and retry.
+
+### 2d. Save the EXACT output
+
+This output goes in the **Reproduction** section of the PR description. Without it, the PR will be rejected.
+
+**Do NOT proceed to Step 3 until you have reproduction output.**
 
 ## Step 3: Build
 
@@ -77,15 +91,26 @@ invoke_expression: & (Get-PSOutput) -Command '$PSVersionTable'
 
 ## Step 5: Rebuild and Verify
 
+### 5a. Rebuild
+
 ```
 invoke_expression: Start-PSBuild -UseNuGetOrg
 ```
 
-Run the reproduction script again with the built pwsh. **Save the output for the PR** — it must show the bug is fixed.
+### 5b. Run the SAME reproduction script from Step 2, but with the built pwsh
 
 ```
-invoke_expression: & (Get-PSOutput) -Command '<reproduction script>'
+invoke_expression: & (Get-PSOutput) -Command '<the same code you ran in Step 2>'
 ```
+
+### 5c. Confirm the output now matches the issue's "Expected behavior"
+
+- If it matches → the fix is correct. Save the output and proceed to Step 6.
+- If it still shows the bug → your fix is incomplete. Go back to Step 4.
+
+### 5d. Save the EXACT output
+
+This output goes in the **Verification** section of the PR description. It must clearly show the bug is fixed (compare with Step 2 output).
 
 ## Step 6: Run Tests
 
