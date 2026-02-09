@@ -5072,7 +5072,7 @@ namespace System.Management.Automation.Language
             Action<List<Expression>, Expression> loopBodyGenerator =
                 (exprs, newValue) =>
                 {
-                    exprs.Add(ReduceAssignment(forEachStatementAst.Variable, TokenKind.Equals, newValue));
+                    exprs.Add(ReduceAssignment((ISupportsAssignment)forEachStatementAst.Variable, TokenKind.Equals, newValue));
                     exprs.Add(Compile(forEachStatementAst.Body));
                 };
 

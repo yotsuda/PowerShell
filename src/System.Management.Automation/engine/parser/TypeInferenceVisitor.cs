@@ -3227,7 +3227,14 @@ namespace System.Management.Automation
                     return AstVisitAction.StopVisit;
                 }
 
-                if (AssignsToTargetVar(forEachStatementAst.Variable) && forEachStatementAst.Condition.Extent.EndOffset < VariableTarget.Extent.StartOffset)
+                // Extract the variable from potentially typed expression ([int]$x)
+                var variableAst = forEachStatementAst.Variable as VariableExpressionAst;
+                if (variableAst == null && forEachStatementAst.Variable is ConvertExpressionAst convertExpr)
+                {
+                    variableAst = convertExpr.Child as VariableExpressionAst;
+                }
+
+                if (variableAst != null && AssignsToTargetVar(variableAst) && forEachStatementAst.Condition.Extent.EndOffset < VariableTarget.Extent.StartOffset)
                 {
                     SetLastAssignment(forEachStatementAst.Condition, enumerate: true);
                 }

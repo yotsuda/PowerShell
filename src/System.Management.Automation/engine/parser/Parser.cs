@@ -3433,6 +3433,10 @@ namespace System.Management.Automation.Language
 
             SkipNewlines();
 
+            // Parse optional type constraint followed by variable
+            List<AttributeBaseAst> attributes = AttributeListRule(false);
+            SkipNewlines();
+
             Token token = NextToken();
             if (token.Kind != TokenKind.Variable && token.Kind != TokenKind.SplattedVariable)
             {
@@ -3440,13 +3444,49 @@ namespace System.Management.Automation.Language
 
                 UngetToken(token);
                 endErrorStatement = lParen.Extent;
-                ReportIncompleteInput(After(endErrorStatement),
-                    nameof(ParserStrings.MissingVariableNameAfterForeach),
-                    ParserStrings.MissingVariableNameAfterForeach);
+                
+                if (attributes != null)
+                {
+                    // We parsed type constraints but no variable followed
+                    ReportIncompleteInput(After(attributes.Last()),
+                        nameof(ParserStrings.MissingVariableNameAfterForeach),
+                        ParserStrings.MissingVariableNameAfterForeach);
+                }
+                else
+                {
+                    ReportIncompleteInput(After(endErrorStatement),
+                        nameof(ParserStrings.MissingVariableNameAfterForeach),
+                        ParserStrings.MissingVariableNameAfterForeach);
+                }
+                
                 return new ErrorStatementAst(ExtentOf(startOfStatement, endErrorStatement));
             }
 
             var variableAst = new VariableExpressionAst((VariableToken)token);
+            
+            // Wrap variable with type constraint if present
+            ExpressionAst foreachVariable = variableAst;
+            if (attributes != null)
+            {
+                // For foreach, only a single type constraint is valid
+                if (attributes.Count == 1 && attributes[0] is TypeConstraintAst typeConstraint)
+                {
+                    foreachVariable = new ConvertExpressionAst(
+                        ExtentOf(attributes[0], variableAst),
+                        typeConstraint,
+                        variableAst);
+                }
+                else
+                {
+                    // Multiple constraints or non-type attributes are not allowed
+                    // Report error but continue with the variable
+                    ReportError(attributes[0].Extent,
+                        nameof(ParserStrings.InvalidForeachFlag),
+                        ParserStrings.InvalidForeachFlag,
+                        "attribute");
+                }
+            }
+            
             SkipNewlines();
 
             PipelineBaseAst pipeline = null;
@@ -3457,7 +3497,7 @@ namespace System.Management.Automation.Language
                 // ErrorRecovery: assume the rest of the statement is missing.
 
                 UngetToken(inToken);
-                endErrorStatement = variableAst.Extent;
+                endErrorStatement = foreachVariable.Extent;
                 ReportIncompleteInput(After(endErrorStatement),
                     nameof(ParserStrings.MissingInInForeach),
                     ParserStrings.MissingInInForeach);
@@ -3508,13 +3548,13 @@ namespace System.Management.Automation.Language
             if (endErrorStatement != null)
             {
                 return new ErrorStatementAst(ExtentOf(startOfStatement, endErrorStatement),
-                                             GetNestedErrorAsts(variableAst, pipeline, body));
+                                             GetNestedErrorAsts(foreachVariable, pipeline, body));
             }
 
             return new ForEachStatementAst(ExtentOf(startOfStatement, body),
                 labelToken?.LabelText,
                 flags,
-                throttleLimit, variableAst, pipeline, body);
+                throttleLimit, foreachVariable, pipeline, body);
         }
 
         private StatementAst ForStatementRule(LabelToken labelToken, Token forToken)
