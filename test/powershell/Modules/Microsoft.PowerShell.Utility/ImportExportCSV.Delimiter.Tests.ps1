@@ -83,4 +83,33 @@ Describe "Using delimiters with Export-CSV and Import-CSV behave correctly" -tag
         $i = Import-Csv TESTDRIVE:\File.csv -Delimiter $delimiter
         $i.Ticks | Should -Be $ExpectedResult
     }
+
+    It 'ConvertTo-Csv -UseCulture:$false uses default comma delimiter' {
+        set-Delimiter ";"
+        $result = [pscustomobject]@{ H1 = 'V1'; H2 = 'V2' } | ConvertTo-Csv -UseCulture:$false
+        $result[0] | Should -Be '"H1","H2"'
+        $result[1] | Should -Be '"V1","V2"'
+    }
+
+    It 'Export-Csv -UseCulture:$false uses default comma delimiter' {
+        set-Delimiter ";"
+        [pscustomobject]@{ H1 = 'V1'; H2 = 'V2' } | Export-Csv TESTDRIVE:/file.csv -UseCulture:$false
+        $content = Get-Content TESTDRIVE:/file.csv
+        $content[0] | Should -Be '"H1","H2"'
+        $content[1] | Should -Be '"V1","V2"'
+    }
+
+    It 'Import-Csv -UseCulture:$false uses default comma delimiter' {
+        "H1,H2`nV1,V2" | Set-Content TESTDRIVE:/file.csv
+        $result = Import-Csv TESTDRIVE:/file.csv -UseCulture:$false
+        $result.H1 | Should -Be 'V1'
+        $result.H2 | Should -Be 'V2'
+    }
+
+    It 'ConvertFrom-Csv -UseCulture:$false uses default comma delimiter' {
+        set-Delimiter ";"
+        $result = "H1,H2`nV1,V2" | ConvertFrom-Csv -UseCulture:$false
+        $result.H1 | Should -Be 'V1'
+        $result.H2 | Should -Be 'V2'
+    }
 }
