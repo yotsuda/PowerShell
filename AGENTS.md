@@ -39,13 +39,17 @@ If `invoke_expression` is not available, fall back to `bash` with `pwsh -Command
 
 Read the issue description. Identify affected source files.
 
-## Step 2: Reproduce the Issue
+## Step 2: Reproduce the Issue — BEFORE Any Code Changes
 
-Run the reproduction script using system pwsh **before building**. Save the output for the PR.
+**CRITICAL: You MUST do this BEFORE writing any fix code.**
+
+Write and run a reproduction script that demonstrates the current (broken) behavior using the system-installed pwsh. This confirms the bug exists and gives you a baseline to compare against after the fix.
 
 ```
-invoke_expression: <reproduction script>
+invoke_expression: <reproduction script that shows the bug>
 ```
+
+**Save the output for the PR.** It must show the incorrect behavior. Do NOT proceed to Step 3 until you have reproduction output.
 
 ## Step 3: Build
 
@@ -65,8 +69,10 @@ invoke_expression: & (Get-PSOutput) -Command '$PSVersionTable'
 
 ## Step 4: Fix the Code
 
+**Do NOT write any fix code until Step 2 (reproduction) and Step 3 (build) are complete.**
+
 - Use `is null` / `is not null` (not `== null` / `!= null`)
-- Add `#nullable enable` near the top of modified files
+- Add `#nullable enable` only if the file already has it enabled
 - Follow existing code style
 
 ## Step 5: Rebuild and Verify
