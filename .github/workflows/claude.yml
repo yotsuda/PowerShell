@@ -40,22 +40,33 @@ jobs:
 
       - name: Create MCP config
         run: |
-          cat > /tmp/mcp-config.json << 'EOF'
+          cat > /tmp/mcp-config.json << EOF
           {
             "mcpServers": {
               "PowerShell": {
                 "type": "stdio",
-                "command": "${{ env.PSMCP_PROXY_PATH }}",
+                "command": "$PSMCP_PROXY_PATH",
                 "args": []
               }
             }
           }
           EOF
 
+      - name: Verify MCP config
+        run: |
+          echo "=== MCP Config ==="
+          cat /tmp/mcp-config.json
+          echo ""
+          echo "=== Proxy executable ==="
+          ls -la "$PSMCP_PROXY_PATH"
+          echo "=== Proxy version test ==="
+          "$PSMCP_PROXY_PATH" --version 2>&1 || echo "(version flag may not be supported)"
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          show_full_output: true
           claude_args: |
             --mcp-config /tmp/mcp-config.json
             --allowedTools "mcp__PowerShell__invoke_expression"
