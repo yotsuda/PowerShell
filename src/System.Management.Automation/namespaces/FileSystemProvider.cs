@@ -3379,11 +3379,11 @@ namespace Microsoft.PowerShell.Commands
                     if (itemExistsDynamicParameters.OlderThan.HasValue)
                     {
                         DateTime olderThan = itemExistsDynamicParameters.OlderThan.Value;
-                        // Convert to local time for comparison with LastWriteTime (which is always local)
-                        // - Local: no conversion needed
+                        // Convert UTC to local time for comparison with LastWriteTime (which is always local)
                         // - Utc: convert to local time
-                        // - Unspecified: treated as UTC and converted to local (per .NET semantics)
-                        if (olderThan.Kind != DateTimeKind.Local)
+                        // - Local: no conversion needed (already local)
+                        // - Unspecified: no conversion needed (treat as local time)
+                        if (olderThan.Kind == DateTimeKind.Utc)
                         {
                             olderThan = olderThan.ToLocalTime();
                         }
@@ -3393,11 +3393,11 @@ namespace Microsoft.PowerShell.Commands
                     if (itemExistsDynamicParameters.NewerThan.HasValue)
                     {
                         DateTime newerThan = itemExistsDynamicParameters.NewerThan.Value;
-                        // Convert to local time for comparison with LastWriteTime (which is always local)
-                        // - Local: no conversion needed
+                        // Convert UTC to local time for comparison with LastWriteTime (which is always local)
                         // - Utc: convert to local time
-                        // - Unspecified: treated as UTC and converted to local (per .NET semantics)
-                        if (newerThan.Kind != DateTimeKind.Local)
+                        // - Local: no conversion needed (already local)
+                        // - Unspecified: no conversion needed (treat as local time)
+                        if (newerThan.Kind == DateTimeKind.Utc)
                         {
                             newerThan = newerThan.ToLocalTime();
                         }
