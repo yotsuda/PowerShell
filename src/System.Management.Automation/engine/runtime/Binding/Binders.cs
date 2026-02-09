@@ -2391,6 +2391,19 @@ namespace System.Management.Automation.Language
             Type opImplType = null, argType = null;
             bool fallbackToDoubleInCaseOfOverflow = false;
 
+            if (target.LimitType == typeof(Int128) || arg.LimitType == typeof(Int128))
+            {
+                opImplType = typeof(Int128Ops);
+                argType = typeof(Int128);
+            }
+            else if (target.LimitType == typeof(UInt128) || arg.LimitType == typeof(UInt128))
+            {
+                opImplType = typeof(UInt128Ops);
+                argType = typeof(UInt128);
+            }
+            else
+            {
+
             TypeCode leftTypeCode = LanguagePrimitives.GetTypeCode(target.LimitType);
             TypeCode rightTypeCode = LanguagePrimitives.GetTypeCode(arg.LimitType);
             TypeCode opTypeCode = (int)leftTypeCode >= (int)rightTypeCode ? leftTypeCode : rightTypeCode;
@@ -2479,6 +2492,8 @@ namespace System.Management.Automation.Language
                 opImplType = typeof(DoubleOps);
                 argType = typeof(double);
             }
+
+            } // end of else block for Int128/UInt128 check
 
             Expression expr =
                 Expression.Call(opImplType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static),

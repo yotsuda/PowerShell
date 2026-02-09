@@ -85,12 +85,14 @@ namespace System.Management.Automation
 
         internal static bool IsNumeric(this Type type)
         {
-            return LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
+            return LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type))
+                || type == typeof(Int128) || type == typeof(UInt128);
         }
 
         internal static bool IsNumericOrPrimitive(this Type type)
         {
-            return type.IsPrimitive || LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type));
+            return type.IsPrimitive || LanguagePrimitives.IsNumeric(LanguagePrimitives.GetTypeCode(type))
+                || type == typeof(Int128) || type == typeof(UInt128);
         }
 
         internal static bool IsSafePrimitive(this Type type)
