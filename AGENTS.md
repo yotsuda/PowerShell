@@ -1,190 +1,93 @@
-# AGENTS.md - Issue Fix Workflow for AI Coding Agents
+# AGENTS.md - Issue Fix Workflow
 
-This document provides step-by-step instructions for AI coding agents (Claude Code, Copilot, etc.) to fix issues in the PowerShell repository using PowerShell.MCP.
+## MANDATORY — Read This First
 
-## Prerequisites
+**A PR without build and test evidence will be rejected.**
 
-- PowerShell.MCP module is installed and available via MCP
-- The repository is cloned and ready to work with
+Every PR MUST contain these sections with actual command output (not placeholders):
 
-## Workflow Overview
+1. **Reproduction** — output proving the bug exists (Step 2)
+2. **Build** — `$PSVersionTable` output from the built pwsh (Step 3)
+3. **Fix** — root cause and what you changed (Step 4)
+4. **Verification** — output proving the bug is fixed (Step 5)
+5. **Test Results** — `Start-PSPester` output with pass/fail counts (Step 6)
 
-1. Understand the issue
-2. Reproduce the issue (using system pwsh, before building)
-3. Clone and build PowerShell
-4. Fix the code
-5. Rebuild and verify the fix
-6. Run tests
-7. Submit PR
+**Do NOT create a PR until you have all five sections.**
 
-## Critical Rules
+## Rules
 
-- **NEVER use `dotnet build` directly** — always use `Start-PSBuild`
-- **NEVER use `Invoke-Pester` directly** — always use `Start-PSPester`
+- **NEVER use `dotnet build`** — use `Start-PSBuild`
+- **NEVER use `Invoke-Pester`** — use `Start-PSPester`
 - **NEVER reference issue numbers in source code**
+- **NEVER skip building or testing** — code-only PRs will be rejected
 
 ---
 
 ## Step 1: Understand the Issue
 
-- Read the issue description and comments carefully
-- Identify the affected module, cmdlet, or component
-- Search the codebase to locate relevant source files
+Read the issue description. Identify affected source files.
 
 ## Step 2: Reproduce the Issue
 
-**Before cloning or building**, reproduce the reported issue using the system-installed pwsh. This saves a build cycle.
+Run the reproduction script using system pwsh **before building**. Save the output for the PR.
 
-1. Write a minimal script that demonstrates the bug
-2. Execute it and confirm the incorrect behavior matches the issue description
-3. Document the reproduction result (expected vs actual)
-
-This confirms:
-- The issue is reproducible
-- You understand the exact failure condition
-- You have a concrete test to verify the fix later
-
-> **Note**: If the issue requires source-level changes to reproduce (e.g., internal API behavior), skip this step and reproduce after building in Step 5.
-
-## Step 3: Clone and Build PowerShell
+## Step 3: Build
 
 ```powershell
-git clone https://github.com/PowerShell/PowerShell.git
-cd PowerShell
 Import-Module ./build.psm1
 Start-PSBootstrap -Scenario DotNet
 Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
 ```
 
-Verify the build succeeded and record version info:
+Run this and **save the output for the PR**:
 
 ```powershell
-$pwshPath = Get-PSOutput
-Write-Host "Built pwsh: $pwshPath"
-& $pwshPath -Command '$PSVersionTable'
+& (Get-PSOutput) -Command '$PSVersionTable'
 ```
-
-**Include the `$PSVersionTable` output in the PR description** to prove the build succeeded.
 
 ## Step 4: Fix the Code
 
-- Modify the relevant source files to fix the issue
-- Follow the coding standards defined in CLAUDE.md
-- Key rules:
-  - Never reference issue numbers in source code
-  - Use `is null` / `is not null` instead of `== null` / `!= null`
-  - Enable `#nullable enable` near the top of modified files
-  - Follow existing code style and .editorconfig
+- Use `is null` / `is not null` (not `== null` / `!= null`)
+- Add `#nullable enable` near the top of modified files
+- Follow existing code style
 
 ## Step 5: Rebuild and Verify
-
-Rebuild with the fix:
 
 ```powershell
 Import-Module ./build.psm1
 Start-PSBuild -UseNuGetOrg
 ```
 
-Then switch to the built pwsh and verify:
-
-```powershell
-# Get the built pwsh path
-$pwshPath = Get-PSOutput
-
-# Kill the current PowerShell process used by MCP
-Get-Process -Id $PID | Stop-Process -Force
-```
-
-Relaunch MCP with the built pwsh:
-- Start it with: `<built-pwsh-path> -Command "Import-Module PowerShell.MCP -Force"`
-
-Once connected:
-1. Run `$PSVersionTable` and **include the output in the PR description** to prove you are running the development build
-2. Run the same reproduction script from Step 2
-3. Confirm the issue is resolved
-4. Test edge cases and related scenarios
+Run the reproduction script again with the built pwsh. **Save the output for the PR** — it must show the bug is fixed.
 
 ## Step 6: Run Tests
 
-**Important:** Always use `Start-PSPester`, never `Invoke-Pester` directly.
-
-Run the related test file:
-
 ```powershell
 Import-Module ./build.psm1
-Start-PSPester -Path <path-to-test-file> -UseNuGetOrg
+Start-PSPester -Path <test-file> -UseNuGetOrg
 ```
 
-For example, if fixing Get-Date:
-
-```powershell
-Start-PSPester -Path test/powershell/Modules/Microsoft.PowerShell.Utility/Get-Date.Tests.ps1 -UseNuGetOrg
-```
-
-Verify:
-- All related tests pass
-- No existing tests are broken
-- Add new tests if the fix introduces new behavior
-
-For xUnit tests (C# level):
-
-```powershell
-Start-PSxUnit
-```
+**Save the test output for the PR** — it must show pass/fail/skip counts.
 
 ## Step 7: Submit PR
 
-1. Create a working branch (never commit to master):
+Use this exact template for the PR description:
 
-```powershell
-git checkout -b fix/issue-description
 ```
-
-2. Stage and commit changes:
-
-```powershell
-git add <files>
-git commit -m "Fix description (#ISSUE_NUMBER)"
-```
-
-3. Create a PR with the following **mandatory** sections in the description:
-
-```markdown
 ## Reproduction
-<paste the reproduction script output from Step 2>
+<paste Step 2 output>
 
 ## Build
-<paste `$PSVersionTable` output from the built pwsh>
+<paste Step 3 $PSVersionTable output>
 
 ## Fix
-<describe the root cause and the fix>
+<describe root cause and fix>
 
 ## Verification
-<paste the reproduction script output AFTER the fix, proving it is resolved>
+<paste Step 5 output showing bug is fixed>
 
 ## Test Results
-<paste `Start-PSPester` output showing passed/failed/skipped counts>
+<paste Step 6 Start-PSPester output>
 ```
 
-**The PR is considered incomplete without all of these sections.**
-
-4. When all sections are complete, mark the PR as **ready for review** (not draft).
-
----
-
-## Firewall Notes (Copilot Coding Agent)
-
-Copilot's sandbox has a firewall that may block external domains. Ensure the following are in the repository's Copilot coding agent allowlist (Settings > Copilot > Coding agent):
-
-- `vsblob.vsassets.io` — NuGet package feeds (dotnet restore)
-- `www.powershellgallery.com` — PowerShell Gallery
-- `cdn.powershellgallery.com` — PowerShell Gallery CDN
-
-Use `-UseNuGetOrg` flag with build commands to prefer public NuGet feeds.
-
-## Tips
-
-- `Split-Path (Get-PSOutput)` returns the build output directory
-- Test files are typically under `./test/powershell/Modules/`
-- Use `Get-Help <cmdlet>` in the built pwsh to verify help content changes
-- When fixing a cmdlet, check both the C# source and the Pester tests
+Mark the PR as **ready for review** (not draft).
