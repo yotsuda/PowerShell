@@ -147,10 +147,26 @@ git add <files>
 git commit -m "Fix description (#ISSUE_NUMBER)"
 ```
 
-3. Create a PR with:
-   - Concise title in English
-   - Description of the issue, root cause, and fix
-   - Test results summary (passed/failed/skipped counts)
+3. Create a PR with the following **mandatory** sections in the description:
+
+```markdown
+## Reproduction
+<paste the reproduction script output from Step 2>
+
+## Build
+<paste `$PSVersionTable` output from the built pwsh>
+
+## Fix
+<describe the root cause and the fix>
+
+## Verification
+<paste the reproduction script output AFTER the fix, proving it is resolved>
+
+## Test Results
+<paste `Start-PSPester` output showing passed/failed/skipped counts>
+```
+
+**The PR is considered incomplete without all of these sections.**
 
 ---
 
