@@ -3379,7 +3379,11 @@ namespace Microsoft.PowerShell.Commands
                     if (itemExistsDynamicParameters.OlderThan.HasValue)
                     {
                         DateTime olderThan = itemExistsDynamicParameters.OlderThan.Value;
-                        if (olderThan.Kind == DateTimeKind.Utc)
+                        // Convert to local time for comparison with LastWriteTime (which is always local)
+                        // - Local: no conversion needed
+                        // - Utc: convert to local time
+                        // - Unspecified: treated as UTC and converted to local (per .NET semantics)
+                        if (olderThan.Kind != DateTimeKind.Local)
                         {
                             olderThan = olderThan.ToLocalTime();
                         }
@@ -3389,7 +3393,11 @@ namespace Microsoft.PowerShell.Commands
                     if (itemExistsDynamicParameters.NewerThan.HasValue)
                     {
                         DateTime newerThan = itemExistsDynamicParameters.NewerThan.Value;
-                        if (newerThan.Kind == DateTimeKind.Utc)
+                        // Convert to local time for comparison with LastWriteTime (which is always local)
+                        // - Local: no conversion needed
+                        // - Utc: convert to local time
+                        // - Unspecified: treated as UTC and converted to local (per .NET semantics)
+                        if (newerThan.Kind != DateTimeKind.Local)
                         {
                             newerThan = newerThan.ToLocalTime();
                         }
