@@ -254,4 +254,22 @@ Describe "Test-Path" -Tags "CI" {
         Test-Path -Path $newFilePath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
         Test-Path -Path $newDirPath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
     }
+
+    It "Should correctly handle UTC DateTimeKind with NewerThan parameter" {
+        $utcPast = ([datetime]::UtcNow).AddMinutes(-10)
+        Test-Path -Path $newFilePath -NewerThan $utcPast | Should -BeTrue
+        Test-Path -Path $newDirPath -NewerThan $utcPast | Should -BeTrue
+    }
+
+    It "Should correctly handle UTC DateTimeKind with OlderThan parameter" {
+        $utcFuture = ([datetime]::UtcNow).AddHours(2)
+        Test-Path -Path $newFilePath -OlderThan $utcFuture | Should -BeTrue
+        Test-Path -Path $newDirPath -OlderThan $utcFuture | Should -BeTrue
+    }
+
+    It "Should return false when path is not newer than UTC future time" {
+        $utcFuture = ([datetime]::UtcNow).AddHours(2)
+        Test-Path -Path $newFilePath -NewerThan $utcFuture | Should -BeFalse
+        Test-Path -Path $newDirPath -NewerThan $utcFuture | Should -BeFalse
+    }
 }
