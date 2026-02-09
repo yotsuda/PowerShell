@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#nullable enable
+
 using System.ComponentModel;
+using System.Linq;
 using System.Management.Automation.Internal;
 using System.Security.Cryptography.X509Certificates;
 
@@ -100,12 +103,13 @@ namespace System.Management.Automation
     /// </summary>
     public sealed class Signature
     {
-        private string _path;
+        private string _path = string.Empty;
         private SignatureStatus _status = SignatureStatus.UnknownError;
         private DWORD _win32Error;
-        private X509Certificate2 _signerCert;
+        private X509Certificate2? _signerCert;
         private string _statusMessage = string.Empty;
-        private X509Certificate2 _timeStamperCert;
+        private X509Certificate2? _timeStamperCert;
+        private string[]? _subjectAlternativeName;
         // private DateTime signedOn = new DateTime(0);
 
         // Three states:
@@ -120,7 +124,7 @@ namespace System.Management.Automation
         /// Gets the X509 certificate of the publisher that
         /// signed the file.
         /// </summary>
-        public X509Certificate2 SignerCertificate
+        public X509Certificate2? SignerCertificate
         {
             get
             {
@@ -132,7 +136,7 @@ namespace System.Management.Automation
         /// Gets the X509 certificate of the authority that
         /// time-stamped the file.
         /// </summary>
-        public X509Certificate2 TimeStamperCertificate
+        public X509Certificate2? TimeStamperCertificate
         {
             get
             {
@@ -186,6 +190,17 @@ namespace System.Management.Automation
         public bool IsOSBinary { get; internal set; }
 
         /// <summary>
+        /// Gets the Subject Alternative Name (SAN) extension from the signer certificate.
+        /// </summary>
+        public string[]? SubjectAlternativeName
+        {
+            get
+            {
+                return _subjectAlternativeName;
+            }
+        }
+
+        /// <summary>
         /// Constructor for class Signature
         ///
         /// Call this to create a validated time-stamped signature object.
@@ -200,9 +215,9 @@ namespace System.Management.Automation
                            X509Certificate2 signer,
                            X509Certificate2 timestamper)
         {
-            Utils.CheckArgForNullOrEmpty(filePath, "filePath");
-            Utils.CheckArgForNull(signer, "signer");
-            Utils.CheckArgForNull(timestamper, "timestamper");
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentNullException.ThrowIfNull(signer);
+            ArgumentNullException.ThrowIfNull(timestamper);
 
             Init(filePath, signer, error, timestamper);
         }
@@ -218,8 +233,8 @@ namespace System.Management.Automation
         internal Signature(string filePath,
                            X509Certificate2 signer)
         {
-            Utils.CheckArgForNullOrEmpty(filePath, "filePath");
-            Utils.CheckArgForNull(signer, "signer");
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentNullException.ThrowIfNull(signer);
 
             Init(filePath, signer, 0, null);
         }
@@ -237,8 +252,8 @@ namespace System.Management.Automation
                            DWORD error,
                            X509Certificate2 signer)
         {
-            Utils.CheckArgForNullOrEmpty(filePath, "filePath");
-            Utils.CheckArgForNull(signer, "signer");
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
+            ArgumentNullException.ThrowIfNull(signer);
 
             Init(filePath, signer, error, null);
         }
@@ -253,21 +268,27 @@ namespace System.Management.Automation
         /// <returns>Constructed object.</returns>
         internal Signature(string filePath, DWORD error)
         {
-            Utils.CheckArgForNullOrEmpty(filePath, "filePath");
+            ArgumentException.ThrowIfNullOrEmpty(filePath);
 
             Init(filePath, null, error, null);
         }
 
         private void Init(string filePath,
-                          X509Certificate2 signer,
+                          X509Certificate2? signer,
                           DWORD error,
-                          X509Certificate2 timestamper)
+                          X509Certificate2? timestamper)
         {
             _path = filePath;
             _win32Error = error;
             _signerCert = signer;
             _timeStamperCert = timestamper;
             SignatureType = SignatureType.None;
+
+            // Extract Subject Alternative Name if the signer certificate is available
+            if (signer is not null)
+            {
+                _subjectAlternativeName = ExtractSubjectAlternativeName(signer);
+            }
 
             SignatureStatus isc =
                 GetSignatureStatusFromWin32Error(error);
@@ -277,6 +298,30 @@ namespace System.Management.Automation
             _statusMessage = GetSignatureStatusMessage(isc,
                                                       error,
                                                       filePath);
+        }
+
+        private static string[]? ExtractSubjectAlternativeName(X509Certificate2 certificate)
+        {
+            // OID for Subject Alternative Name is "2.5.29.17"
+            const string SubjectAlternativeNameOid = "2.5.29.17";
+
+            foreach (X509Extension extension in certificate.Extensions)
+            {
+                if (extension.Oid?.Value == SubjectAlternativeNameOid)
+                {
+                    // Format with multiLine = true to get each SAN on a separate line
+                    string formattedSan = extension.Format(multiLine: true);
+                    
+                    // Split by newlines and filter out empty entries
+                    return formattedSan
+                        .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(line => line.Trim())
+                        .Where(line => !string.IsNullOrWhiteSpace(line))
+                        .ToArray();
+                }
+            }
+
+            return null;
         }
 
         private static SignatureStatus GetSignatureStatusFromWin32Error(DWORD error)
@@ -318,9 +363,9 @@ namespace System.Management.Automation
                                                  DWORD error,
                                                  string filePath)
         {
-            string message = null;
-            string resourceString = null;
-            string arg = null;
+            string? message = null;
+            string? resourceString = null;
+            string? arg = null;
 
             switch (status)
             {
@@ -375,19 +420,19 @@ namespace System.Management.Automation
                     break;
             }
 
-            if (message == null)
+            if (message is null)
             {
-                if (arg == null)
+                if (arg is null)
                 {
                     message = resourceString;
                 }
                 else
                 {
-                    message = StringUtil.Format(resourceString, arg);
+                    message = StringUtil.Format(resourceString!, arg);
                 }
             }
 
-            return message;
+            return message ?? string.Empty;
         }
     }
 }
