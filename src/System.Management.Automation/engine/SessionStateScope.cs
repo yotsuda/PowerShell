@@ -449,20 +449,15 @@ namespace System.Management.Automation
                     if (variable is LocalVariable
                         && (variableToSet.Attributes.Count > 0 || variableToSet.Options != variable.Options))
                     {
-                        SessionStateUnauthorizedAccessException e =
-                            new SessionStateUnauthorizedAccessException(
-                                    name,
-                                    SessionStateCategory.Variable,
-                                    "VariableNotWritableRare",
-                                    SessionStateStrings.VariableNotWritableRare);
-
-                        throw e;
+                        // When a LocalVariable needs to be set with attributes or different options,
+                        // replace it with a new PSVariable instead of throwing an error.
+                        // This allows foreach loops with typed variables to shadow outer variables.
+                        _variables.Remove(name);
+                        variable = variableToSet;
                     }
-
-                    if (variable.IsReadOnly && force)
+                    else if (variable.IsReadOnly && force)
                     {
                         _variables.Remove(name);
-                        varExists = false;
                         variable = new PSVariable(name, variableToSet.Value, variableToSet.Options, variableToSet.Attributes) { Description = variableToSet.Description };
                     }
                     else
@@ -567,24 +562,13 @@ namespace System.Management.Automation
                     throw e;
                 }
 
-                if (variable is LocalVariable)
-                {
-                    SessionStateUnauthorizedAccessException e =
-                        new SessionStateUnauthorizedAccessException(
-                                newVariable.Name,
-                                SessionStateCategory.Variable,
-                                "VariableNotWritableRare",
-                                SessionStateStrings.VariableNotWritableRare);
-
-                    throw e;
-                }
-
                 // If the new and old variable are the same then don't bother
                 // doing the assignment and marking as "removed".
                 // This can happen when a module variable is imported twice.
                 if (!ReferenceEquals(newVariable, variable))
                 {
                     // Mark the old variable as removed...
+                    // This includes LocalVariables - they can be replaced with new variables
                     variable.WasRemoved = true;
                     variable = newVariable;
                 }
