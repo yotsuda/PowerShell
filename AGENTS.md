@@ -99,15 +99,11 @@ invoke_expression: Start-PSBuild -UseNuGetOrg
 
 ### 5b. Switch to the built pwsh
 
-Start a new process using the built pwsh binary with PowerShell.MCP loaded, then kill all other pwsh processes so the Proxy reconnects to the built pwsh:
-
 ```
-invoke_expression: $builtPwsh = Get-PSOutput
-invoke_expression: $newProc = Start-Process $builtPwsh -ArgumentList '-NoExit', '-Command', 'Import-Module PowerShell.MCP' -PassThru
-invoke_expression: Get-Process pwsh | Where-Object { $_.Id -ne $newProc.Id } | Stop-Process -Force
+invoke_expression: Kill-AllPwsh (Get-PSOutput)
 ```
 
-After this, the Proxy automatically reconnects to the built pwsh. All subsequent `invoke_expression` calls run directly in the built pwsh session.
+This kills all pwsh processes and starts a new session using the built pwsh binary. The Proxy automatically reconnects. All subsequent `invoke_expression` calls run directly in the built pwsh session.
 
 ### 5c. Run the SAME reproduction script from Step 2
 
