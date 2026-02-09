@@ -182,20 +182,22 @@ namespace Microsoft.PowerShell.Commands
             else
             {
                 // we have no globbing: try an exact match, because this is quicker.
-                PSMemberInfo x = wrappedTarget.Members[_stringValue];
+                // Unescape the string in case it contains escaped wildcard characters.
+                string unescapedName = WildcardPattern.Unescape(_stringValue);
+                PSMemberInfo x = wrappedTarget.Members[unescapedName];
 
                 if (x == null)
                 {
                     if (wasHashtable)
                     {
-                        x = target.Members[_stringValue];
+                        x = target.Members[unescapedName];
                     }
                     else if (wrappedTarget.BaseObject is System.Dynamic.IDynamicMetaObjectProvider)
                     {
                         // We could check if GetDynamicMemberNames includes the name...  but
                         // GetDynamicMemberNames is only a hint, not a contract, so we'd want
                         // to attempt the binding whether it's in there or not.
-                        x = new PSDynamicMember(_stringValue);
+                        x = new PSDynamicMember(unescapedName);
                     }
                 }
 
