@@ -36,41 +36,24 @@ jobs:
             Where-Object { $_.FullName -match 'linux-x64' } |
             Select-Object -First 1 -ExpandProperty FullName
           chmod +x $proxy
-          "PSMCP_PROXY_PATH=$proxy" >> $env:GITHUB_ENV
-
-      - name: Create MCP config
-        run: |
-          cat > /tmp/mcp-config.json << EOF
-          {
-            "mcpServers": {
-              "PowerShell": {
-                "type": "stdio",
-                "command": "$PSMCP_PROXY_PATH",
-                "args": []
-              }
-            }
-          }
-          EOF
-
-      - name: Verify MCP config
-        run: |
-          echo "=== MCP Config ==="
-          cat /tmp/mcp-config.json
-          echo ""
-          echo "=== Proxy executable ==="
-          ls -la "$PSMCP_PROXY_PATH"
-          echo "=== Proxy version test ==="
-          "$PSMCP_PROXY_PATH" --version 2>&1 || echo "(version flag may not be supported)"
+          New-Item -ItemType SymbolicLink -Path '/usr/local/bin/PowerShell.MCP.Proxy' -Target $proxy -Force
 
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           show_full_output: true
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "mcp__PowerShell__invoke_expression",
+                  "mcp__PowerShell__get_current_location",
+                  "mcp__PowerShell__wait_for_completion",
+                  "mcp__PowerShell__start_powershell_console",
+                  "mcp__PowerShell__generate_agent_id"
+                ]
+              }
+            }
           claude_args: |
-            --mcp-config /tmp/mcp-config.json
-            --allowedTools "mcp__PowerShell__invoke_expression"
-            --allowedTools "mcp__PowerShell__get_current_location"
-            --allowedTools "mcp__PowerShell__wait_for_completion"
-            --allowedTools "mcp__PowerShell__start_powershell_console"
-            --allowedTools "mcp__PowerShell__generate_agent_id"
+            --mcp-config '{"mcpServers":{"PowerShell":{"type":"stdio","command":"/usr/local/bin/PowerShell.MCP.Proxy","args":[]}}}'
