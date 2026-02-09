@@ -14,8 +14,20 @@ Every PR MUST contain these sections with actual command output (not placeholder
 
 **Do NOT create a PR until you have all five sections.**
 
+## How to Execute Commands
+
+**Use the `invoke_expression` MCP tool for ALL commands.** Do NOT use `bash` with `pwsh -Command`.
+
+The `invoke_expression` tool provides a **persistent PowerShell session**:
+- `Import-Module ./build.psm1` stays loaded across all subsequent calls
+- Variables, working directory, and environment persist between calls
+- No need to re-import modules or re-set variables
+
+If `invoke_expression` is not available, fall back to `bash` with `pwsh -Command`.
+
 ## Rules
 
+- **ALWAYS use `invoke_expression`** for all PowerShell commands
 - **NEVER use `dotnet build`** — use `Start-PSBuild`
 - **NEVER use `Invoke-Pester`** — use `Start-PSPester`
 - **NEVER reference issue numbers in source code**
@@ -31,19 +43,25 @@ Read the issue description. Identify affected source files.
 
 Run the reproduction script using system pwsh **before building**. Save the output for the PR.
 
+```
+invoke_expression: <reproduction script>
+```
+
 ## Step 3: Build
 
-```powershell
-Import-Module ./build.psm1
-Start-PSBootstrap -Scenario DotNet
-Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
+```
+invoke_expression: Import-Module ./build.psm1
+invoke_expression: Start-PSBootstrap -Scenario DotNet
+invoke_expression: Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
 ```
 
 Run this and **save the output for the PR**:
 
-```powershell
-& (Get-PSOutput) -Command '$PSVersionTable'
 ```
+invoke_expression: & (Get-PSOutput) -Command '$PSVersionTable'
+```
+
+> Note: `Import-Module` in the first call persists — no need to repeat it.
 
 ## Step 4: Fix the Code
 
@@ -53,18 +71,20 @@ Run this and **save the output for the PR**:
 
 ## Step 5: Rebuild and Verify
 
-```powershell
-Import-Module ./build.psm1
-Start-PSBuild -UseNuGetOrg
+```
+invoke_expression: Start-PSBuild -UseNuGetOrg
 ```
 
 Run the reproduction script again with the built pwsh. **Save the output for the PR** — it must show the bug is fixed.
 
+```
+invoke_expression: & (Get-PSOutput) -Command '<reproduction script>'
+```
+
 ## Step 6: Run Tests
 
-```powershell
-Import-Module ./build.psm1
-Start-PSPester -Path <test-file> -UseNuGetOrg
+```
+invoke_expression: Start-PSPester -Path <test-file> -UseNuGetOrg
 ```
 
 **Save the test output for the PR** — it must show pass/fail/skip counts.

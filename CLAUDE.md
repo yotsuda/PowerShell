@@ -10,16 +10,23 @@ Fork of PowerShell/PowerShell. A cross-platform shell and scripting language bui
 3. **Always include issue number in commit messages** (e.g., `Fix description (#XXXXX)`)
 4. **Never commit without user approval**
 
-## Build Instructions (Linux / GitHub Actions)
+## How to Execute Commands
 
-```bash
-pwsh -Command "Import-Module ./build.psm1; Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg"
+**Use the `invoke_expression` MCP tool for ALL commands.** Do NOT use `bash` with `pwsh -Command`.
+
+The `invoke_expression` tool provides a **persistent PowerShell session** — modules, variables, and working directory persist across calls. Import once, use everywhere.
+
+If `invoke_expression` is not available, fall back to `bash` with `pwsh -Command`.
+
+## Build Instructions
+
+```
+invoke_expression: Import-Module ./build.psm1
+invoke_expression: Start-PSBootstrap -Scenario DotNet
+invoke_expression: Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
 ```
 
-If the build fails, try bootstrapping first:
-```bash
-pwsh -Command "Import-Module ./build.psm1; Start-PSBootstrap -Scenario DotNet; Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg"
-```
+> Note: `Import-Module` persists in the session — no need to repeat it for subsequent commands.
 
 ## Test Instructions
 
@@ -27,13 +34,13 @@ pwsh -Command "Import-Module ./build.psm1; Start-PSBootstrap -Scenario DotNet; S
 - `Start-PSPester` uses Pester v4 (same as CI)
 - `Invoke-Pester` may use Pester v5, which has different variable scoping behavior
 
-```bash
-pwsh -Command "Import-Module ./build.psm1; Start-PSPester -UseNuGetOrg"
+```
+invoke_expression: Start-PSPester -Path <test-file> -UseNuGetOrg
 ```
 
 For xUnit tests:
-```bash
-pwsh -Command "Import-Module ./build.psm1; Start-PSxUnit"
+```
+invoke_expression: Start-PSxUnit
 ```
 
 ## PR Submission Rules

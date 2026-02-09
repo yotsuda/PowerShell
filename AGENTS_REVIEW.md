@@ -12,10 +12,13 @@ This document provides step-by-step instructions for AI coding agents to review 
 
 ## Critical Rules
 
+- **ALWAYS use `invoke_expression`** MCP tool for all PowerShell commands — NEVER use `bash` with `pwsh -Command`
 - **NEVER use `dotnet build` directly** — always use `Start-PSBuild`
 - **NEVER use `Invoke-Pester` directly** — always use `Start-PSPester`
 - Be constructive and specific in feedback
 - Always provide evidence (build logs, test results) for your assessment
+
+> The `invoke_expression` tool provides a persistent PowerShell session — modules, variables, and working directory persist across calls. If `invoke_expression` is not available, fall back to `bash` with `pwsh -Command`.
 
 ---
 
@@ -44,26 +47,25 @@ This ensures:
 
 ### Checkout the PR
 
-```powershell
-git clone https://github.com/PowerShell/PowerShell.git
-cd PowerShell
-git fetch origin pull/<PR_NUMBER>/head:pr-<PR_NUMBER>
-git checkout pr-<PR_NUMBER>
+```
+invoke_expression: git clone https://github.com/PowerShell/PowerShell.git
+invoke_expression: Set-Location PowerShell
+invoke_expression: git fetch origin pull/<PR_NUMBER>/head:pr-<PR_NUMBER>
+invoke_expression: git checkout pr-<PR_NUMBER>
 ```
 
 ### Build
 
-```powershell
-Import-Module ./build.psm1
-Start-PSBootstrap -Scenario DotNet
-Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
+```
+invoke_expression: Import-Module ./build.psm1
+invoke_expression: Start-PSBootstrap -Scenario DotNet
+invoke_expression: Start-PSBuild -Clean -PSModuleRestore -UseNuGetOrg
 ```
 
 Verify the build and record version info:
 
-```powershell
-$pwshPath = Get-PSOutput
-& $pwshPath -Command '$PSVersionTable'
+```
+invoke_expression: & (Get-PSOutput) -Command '$PSVersionTable'
 ```
 
 **Include the `$PSVersionTable` output in your review comment** to prove the build succeeded. If the build fails, document the errors — this is critical feedback for the PR author.
@@ -72,9 +74,8 @@ $pwshPath = Get-PSOutput
 
 Identify test files related to the changed code and run them:
 
-```powershell
-Import-Module ./build.psm1
-Start-PSPester -Path <path-to-related-test-file> -UseNuGetOrg
+```
+invoke_expression: Start-PSPester -Path <path-to-related-test-file> -UseNuGetOrg
 ```
 
 Document the test results (passed/failed/skipped counts).
