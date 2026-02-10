@@ -5887,7 +5887,18 @@ namespace System.Management.Automation
                     return AstVisitAction.StopVisit;
                 }
 
-                SaveVariableInfo(forEachStatementAst.Variable.VariablePath.UnqualifiedPath, variableType: null, isConstraint: false);
+                // Extract the variable from potentially typed expression ([int]$x)
+                var variableAst = forEachStatementAst.Variable as VariableExpressionAst;
+                if (variableAst == null && forEachStatementAst.Variable is ConvertExpressionAst convertExpr)
+                {
+                    variableAst = convertExpr.Child as VariableExpressionAst;
+                }
+
+                if (variableAst != null)
+                {
+                    SaveVariableInfo(variableAst.VariablePath.UnqualifiedPath, variableType: null, isConstraint: false);
+                }
+                
                 return AstVisitAction.Continue;
             }
 

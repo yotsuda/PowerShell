@@ -4379,7 +4379,7 @@ namespace System.Management.Automation.Language
         public ForEachStatementAst(IScriptExtent extent,
                                    string label,
                                    ForEachFlags flags,
-                                   VariableExpressionAst variable,
+                                   ExpressionAst variable,
                                    PipelineBaseAst expression,
                                    StatementBlockAst body)
             : base(extent, label, expression, body)
@@ -4413,7 +4413,7 @@ namespace System.Management.Automation.Language
                                    string label,
                                    ForEachFlags flags,
                                    ExpressionAst throttleLimit,
-                                   VariableExpressionAst variable,
+                                   ExpressionAst variable,
                                    PipelineBaseAst expression,
                                    StatementBlockAst body)
             : this(extent, label, flags, variable, expression, body)
@@ -4426,9 +4426,10 @@ namespace System.Management.Automation.Language
         }
 
         /// <summary>
-        /// The name of the variable set for each item as the loop iterates.  This property is never null.
+        /// The variable set for each item as the loop iterates.  This property is never null.
+        /// Can be a VariableExpressionAst or a ConvertExpressionAst (for typed variables like [int]$x).
         /// </summary>
-        public VariableExpressionAst Variable { get; }
+        public ExpressionAst Variable { get; }
 
         /// <summary>
         /// The limit to be obeyed during parallel processing, if any.
