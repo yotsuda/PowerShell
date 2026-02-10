@@ -156,4 +156,40 @@ Describe 'ConvertTo-Json' -tags "CI" {
         $actual = ConvertTo-Json -Compress -InputObject $obj
         $actual | Should -Be '{"Positive":18446744073709551615,"Negative":-18446744073709551615}'
     }
+
+    Context '-EnumsAsStrings parameter' {
+        It 'Should serialize enum as string with -EnumsAsStrings' {
+            $actual = [System.DayOfWeek]::Monday | ConvertTo-Json -EnumsAsStrings
+            $actual | Should -Be '"Monday"'
+        }
+
+        It 'Should serialize enum as number without -EnumsAsStrings' {
+            $actual = [System.DayOfWeek]::Monday | ConvertTo-Json
+            $actual | Should -Be '1'
+        }
+
+        It 'Should serialize enum as string with -EnumsAsStrings -Compress (issue #25987)' {
+            $actual = [System.DayOfWeek]::Monday | ConvertTo-Json -EnumsAsStrings -Compress
+            $actual | Should -Be '"Monday"'
+        }
+
+        It 'Should serialize enum property as string with -EnumsAsStrings -Compress' {
+            $obj = [PSCustomObject]@{ Day = [System.DayOfWeek]::Monday }
+            $actual = $obj | ConvertTo-Json -EnumsAsStrings -Compress
+            $actual | Should -Be '{"Day":"Monday"}'
+        }
+
+        It 'Should serialize multiple enums as strings with -EnumsAsStrings -Compress' {
+            $actual = @([System.DayOfWeek]::Monday, [System.DayOfWeek]::Friday) | ConvertTo-Json -EnumsAsStrings -Compress
+            $actual | Should -Be '["Monday","Friday"]'
+        }
+
+        It 'Should serialize bitwise enum as string with -EnumsAsStrings -Compress' {
+            $obj = [PSCustomObject]@{
+                Commands = [System.Management.Automation.CommandTypes]'Alias,Function,Cmdlet'
+            }
+            $actual = $obj | ConvertTo-Json -EnumsAsStrings -Compress
+            $actual | Should -Be '{"Commands":"Alias, Function, Cmdlet"}'
+        }
+    }
 }
