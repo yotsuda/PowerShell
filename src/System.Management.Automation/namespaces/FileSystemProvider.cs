@@ -3378,12 +3378,30 @@ namespace Microsoft.PowerShell.Commands
 
                     if (itemExistsDynamicParameters.OlderThan.HasValue)
                     {
-                        result &= lastWriteTime < itemExistsDynamicParameters.OlderThan.Value;
+                        DateTime olderThan = itemExistsDynamicParameters.OlderThan.Value;
+                        // Convert UTC to local time for comparison with LastWriteTime (which is always local)
+                        // - Utc: convert to local time
+                        // - Local: no conversion needed (already local)
+                        // - Unspecified: no conversion needed (treat as local time)
+                        if (olderThan.Kind == DateTimeKind.Utc)
+                        {
+                            olderThan = olderThan.ToLocalTime();
+                        }
+                        result &= lastWriteTime < olderThan;
                     }
 
                     if (itemExistsDynamicParameters.NewerThan.HasValue)
                     {
-                        result &= lastWriteTime > itemExistsDynamicParameters.NewerThan.Value;
+                        DateTime newerThan = itemExistsDynamicParameters.NewerThan.Value;
+                        // Convert UTC to local time for comparison with LastWriteTime (which is always local)
+                        // - Utc: convert to local time
+                        // - Local: no conversion needed (already local)
+                        // - Unspecified: no conversion needed (treat as local time)
+                        if (newerThan.Kind == DateTimeKind.Utc)
+                        {
+                            newerThan = newerThan.ToLocalTime();
+                        }
+                        result &= lastWriteTime > newerThan;
                     }
                 }
             }

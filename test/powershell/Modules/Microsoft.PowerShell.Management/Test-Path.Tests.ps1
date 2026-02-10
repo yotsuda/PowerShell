@@ -254,4 +254,67 @@ Describe "Test-Path" -Tags "CI" {
         Test-Path -Path $newFilePath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
         Test-Path -Path $newDirPath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
     }
+
+    Context "DateTimeKind handling" {
+        BeforeAll {
+            $utcTestFile = Join-Path -Path $testdirectory -ChildPath utctestfile
+            $utcTestDir = Join-Path -Path $testdirectory -ChildPath utctestdir
+            New-Item -Path $utcTestFile -ItemType File | Out-Null
+            New-Item -Path $utcTestDir -ItemType Directory | Out-Null
+        }
+
+        It "Should handle UTC DateTimeKind with NewerThan for files" {
+            Start-Sleep -Milliseconds 100
+            $utcTimeBefore = [datetime]::UtcNow.AddSeconds(-1)
+            Test-Path -Path $utcTestFile -NewerThan $utcTimeBefore | Should -BeTrue
+        }
+
+        It "Should handle UTC DateTimeKind with NewerThan for directories" {
+            Start-Sleep -Milliseconds 100
+            $utcTimeBefore = [datetime]::UtcNow.AddSeconds(-1)
+            Test-Path -Path $utcTestDir -NewerThan $utcTimeBefore | Should -BeTrue
+        }
+
+        It "Should handle UTC DateTimeKind with OlderThan for files" {
+            $utcTimeAfter = [datetime]::UtcNow.AddSeconds(1)
+            Test-Path -Path $utcTestFile -OlderThan $utcTimeAfter | Should -BeTrue
+        }
+
+        It "Should handle UTC DateTimeKind with OlderThan for directories" {
+            $utcTimeAfter = [datetime]::UtcNow.AddSeconds(1)
+            Test-Path -Path $utcTestDir -OlderThan $utcTimeAfter | Should -BeTrue
+        }
+
+        It "Should handle Local DateTimeKind with NewerThan" {
+            $localTimeBefore = [datetime]::Now.AddSeconds(-1)
+            Test-Path -Path $utcTestFile -NewerThan $localTimeBefore | Should -BeTrue
+        }
+
+        It "Should handle Local DateTimeKind with OlderThan" {
+            $localTimeAfter = [datetime]::Now.AddSeconds(1)
+            Test-Path -Path $utcTestFile -OlderThan $localTimeAfter | Should -BeTrue
+        }
+
+        It "Should handle Unspecified DateTimeKind with NewerThan" {
+            $unspecifiedTime = New-Object DateTime @((Get-Date).AddSeconds(-1).Ticks, [DateTimeKind]::Unspecified)
+            Test-Path -Path $utcTestFile -NewerThan $unspecifiedTime | Should -BeTrue
+        }
+
+        It "Should handle Unspecified DateTimeKind with OlderThan" {
+            $unspecifiedTime = New-Object DateTime @((Get-Date).AddSeconds(1).Ticks, [DateTimeKind]::Unspecified)
+            Test-Path -Path $utcTestFile -OlderThan $unspecifiedTime | Should -BeTrue
+        }
+
+        It "Should correctly compare UTC time in NewerThan when file is newer" {
+            # File was created recently, so it should be newer than UTC time from 10 seconds ago
+            $utcTimeBefore = [datetime]::UtcNow.AddSeconds(-10)
+            Test-Path -Path $utcTestFile -NewerThan $utcTimeBefore | Should -BeTrue
+        }
+
+        It "Should correctly compare UTC time in OlderThan when file is older" {
+            # File should be older than UTC time 10 seconds in the future
+            $utcTimeAfter = [datetime]::UtcNow.AddSeconds(10)
+            Test-Path -Path $utcTestFile -OlderThan $utcTimeAfter | Should -BeTrue
+        }
+    }
 }
