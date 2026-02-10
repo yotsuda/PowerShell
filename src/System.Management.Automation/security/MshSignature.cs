@@ -106,6 +106,7 @@ namespace System.Management.Automation
         private X509Certificate2 _signerCert;
         private string _statusMessage = string.Empty;
         private X509Certificate2 _timeStamperCert;
+        private string[] _subjectAlternativeName;
         // private DateTime signedOn = new DateTime(0);
 
         // Three states:
@@ -184,6 +185,17 @@ namespace System.Management.Automation
         /// True if the item is signed as part of an operating system release.
         /// </summary>
         public bool IsOSBinary { get; internal set; }
+
+        /// <summary>
+        /// Gets the Subject Alternative Name (SAN) extension from the signer certificate.
+        /// </summary>
+        public string[] SubjectAlternativeName
+        {
+            get
+            {
+                return _subjectAlternativeName;
+            }
+        }
 
         /// <summary>
         /// Constructor for class Signature
@@ -269,6 +281,12 @@ namespace System.Management.Automation
             _timeStamperCert = timestamper;
             SignatureType = SignatureType.None;
 
+            // Extract Subject Alternative Name if the signer certificate is available
+            if (signer != null)
+            {
+                _subjectAlternativeName = ExtractSubjectAlternativeName(signer);
+            }
+
             SignatureStatus isc =
                 GetSignatureStatusFromWin32Error(error);
 
@@ -277,6 +295,49 @@ namespace System.Management.Automation
             _statusMessage = GetSignatureStatusMessage(isc,
                                                       error,
                                                       filePath);
+        }
+
+        private static string[] ExtractSubjectAlternativeName(X509Certificate2 certificate)
+        {
+            // OID for Subject Alternative Name is "2.5.29.17"
+            const string SubjectAlternativeNameOid = "2.5.29.17";
+
+            foreach (X509Extension extension in certificate.Extensions)
+            {
+                if (extension.Oid != null && extension.Oid.Value == SubjectAlternativeNameOid)
+                {
+                    // Format with multiLine = true to get each SAN on a separate line
+                    string formattedSan = extension.Format(multiLine: true);
+                    
+                    // Split by newlines and filter out empty entries
+                    string[] lines = formattedSan.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    
+                    // Trim whitespace and filter empty lines
+                    int count = 0;
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        lines[i] = lines[i].Trim();
+                        if (!string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            count++;
+                        }
+                    }
+                    
+                    string[] result = new string[count];
+                    int index = 0;
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        if (!string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            result[index++] = lines[i];
+                        }
+                    }
+                    
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         private static SignatureStatus GetSignatureStatusFromWin32Error(DWORD error)
