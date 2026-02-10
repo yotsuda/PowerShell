@@ -308,5 +308,13 @@ Describe "Export-Csv" -Tags "CI" {
 
             $result | Should -BeExactly $result2
         }
+
+        It "Export-Csv with -UseCulture:`$false uses default comma delimiter" {
+            $testObject = [pscustomobject]@{H1 = 'V1'; H2 = 'V2'}
+            $testObject | Export-Csv -Path $testCsv -UseCulture:$false
+            $result = Get-Content -Path $testCsv
+            $result[0] | Should -BeExactly "`"H1`",`"H2`""
+            $result[1] | Should -BeExactly "`"V1`",`"V2`""
+        }
     }
 }

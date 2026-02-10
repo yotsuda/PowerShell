@@ -132,7 +132,7 @@ namespace Microsoft.PowerShell.Commands
                 NoTypeInformation = !IncludeTypeInformation;
             }
 
-            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture);
+            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture.IsPresent && UseCulture.ToBool());
         }
     }
     #endregion
@@ -643,7 +643,7 @@ namespace Microsoft.PowerShell.Commands
         /// </summary>
         protected override void BeginProcessing()
         {
-            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture);
+            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture.IsPresent && UseCulture.ToBool());
         }
 
         /// <summary>
@@ -841,7 +841,7 @@ namespace Microsoft.PowerShell.Commands
         /// </summary>
         protected override void BeginProcessing()
         {
-            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture);
+            Delimiter = ImportExportCSVHelper.SetDelimiter(this, ParameterSetName, Delimiter, UseCulture.IsPresent && UseCulture.ToBool());
         }
 
         /// <summary>
@@ -1802,6 +1802,11 @@ namespace Microsoft.PowerShell.Commands
                         // ListSeparator is apparently always a character even though the property returns a string, checked via:
                         // [CultureInfo]::GetCultures("AllCultures") | % { ([CultureInfo]($_.Name)).TextInfo.ListSeparator } | ? Length -ne 1
                         delimiter = CultureInfo.CurrentCulture.TextInfo.ListSeparator[0];
+                    }
+                    else
+                    {
+                        // If UseCulture is explicitly false, use the default delimiter
+                        delimiter = ImportExportCSVHelper.CSVDelimiter;
                     }
 
                     break;
