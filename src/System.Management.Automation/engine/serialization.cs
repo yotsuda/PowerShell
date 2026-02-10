@@ -1514,6 +1514,11 @@ namespace System.Management.Automation
                     ErrorRecord errorRecord = mshSource.ImmediateBaseObject as ErrorRecord;
                     if (errorRecord != null)
                     {
+                        // Create a new PSObject that stores members locally to avoid modifying the original input object.
+                        // Use the internal AsPSObject overload that creates a PSObject with StoreTypeNameAndInstanceMembersLocally=true.
+                        // This ensures that any properties added by ToPSObjectForRemoting are not stored in the resurrection table,
+                        // preventing them from appearing on the original object.
+                        mshSource = PSObject.AsPSObject(errorRecord, storeTypeNameAndInstanceMembersLocally: true);
                         errorRecord.ToPSObjectForRemoting(mshSource);
                         isErrorRecord = true;
                         break;
@@ -1522,6 +1527,8 @@ namespace System.Management.Automation
                     InformationalRecord informationalRecord = mshSource.ImmediateBaseObject as InformationalRecord;
                     if (informationalRecord != null)
                     {
+                        // Create a new PSObject that stores members locally to avoid modifying the original input object.
+                        mshSource = PSObject.AsPSObject(informationalRecord, storeTypeNameAndInstanceMembersLocally: true);
                         informationalRecord.ToPSObjectForRemoting(mshSource);
                         isInformationalRecord = true;
                         break;

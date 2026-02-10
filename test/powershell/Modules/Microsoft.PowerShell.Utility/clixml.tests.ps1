@@ -275,6 +275,44 @@ Describe "CliXml test" -Tags "CI" {
             $cred2.Password | Should -BeOfType System.Security.SecureString
             $cred2.GetNetworkCredential().Password | Should -BeExactly $cred.GetNetworkCredential().Password
         }
+
+        It "ConvertTo-CliXml should not modify input ErrorRecord" {
+            Write-Error foo 2>$null
+            $e = $Error[0]
+
+            # Get members before serialization
+            $membersBefore = $e | Get-Member -View Extended | Select-Object -ExpandProperty Name
+
+            # Serialize the ErrorRecord
+            $null = $e | ConvertTo-CliXml
+
+            # Get members after serialization
+            $membersAfter = $e | Get-Member -View Extended | Select-Object -ExpandProperty Name
+
+            # Members should be the same before and after
+            $membersBefore | Should -Be $membersAfter
+        }
+
+        It "Export-CliXml should not modify input ErrorRecord" {
+            Write-Error foo 2>$null
+            $e = $Error[0]
+
+            # Get members before serialization
+            $membersBefore = $e | Get-Member -View Extended | Select-Object -ExpandProperty Name
+
+            # Serialize the ErrorRecord
+            $tempFile = Join-Path $testFilePath "error-record.xml"
+            $e | Export-CliXml -Path $tempFile
+
+            # Get members after serialization
+            $membersAfter = $e | Get-Member -View Extended | Select-Object -ExpandProperty Name
+
+            # Members should be the same before and after
+            $membersBefore | Should -Be $membersAfter
+
+            # Clean up
+            Remove-Item $tempFile -ErrorAction SilentlyContinue
+        }
     }
 }
 
