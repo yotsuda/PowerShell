@@ -254,4 +254,36 @@ Describe "Test-Path" -Tags "CI" {
         Test-Path -Path $newFilePath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
         Test-Path -Path $newDirPath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
     }
+
+    It "Should handle UTC DateTimeKind correctly with NewerThan" {
+        # Create a test file
+        $testFile = Join-Path -Path $testdirectory -ChildPath utctest
+        New-Item -Path $testFile -ItemType File | Out-Null
+        Start-Sleep -Milliseconds 100
+
+        # Get current UTC time and create a time 10 minutes in the past
+        $utcPast = [datetime]::UtcNow.AddMinutes(-10)
+
+        # File should be newer than 10 minutes ago (in UTC)
+        Test-Path -Path $testFile -NewerThan $utcPast | Should -BeTrue
+
+        # Clean up
+        Remove-Item -Path $testFile -Force
+    }
+
+    It "Should handle UTC DateTimeKind correctly with OlderThan" {
+        # Create a test file and set its timestamp to 1 day ago
+        $testFile = Join-Path -Path $testdirectory -ChildPath utctestold
+        $file = New-Item -Path $testFile -ItemType File
+        $file.LastWriteTime = (Get-Date).AddDays(-1)
+
+        # Get current UTC time
+        $utcNow = [datetime]::UtcNow
+
+        # File should be older than now (in UTC)
+        Test-Path -Path $testFile -OlderThan $utcNow | Should -BeTrue
+
+        # Clean up
+        Remove-Item -Path $testFile -Force
+    }
 }
