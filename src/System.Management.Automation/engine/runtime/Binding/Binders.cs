@@ -2391,93 +2391,107 @@ namespace System.Management.Automation.Language
             Type opImplType = null, argType = null;
             bool fallbackToDoubleInCaseOfOverflow = false;
 
-            TypeCode leftTypeCode = LanguagePrimitives.GetTypeCode(target.LimitType);
-            TypeCode rightTypeCode = LanguagePrimitives.GetTypeCode(arg.LimitType);
-            TypeCode opTypeCode = (int)leftTypeCode >= (int)rightTypeCode ? leftTypeCode : rightTypeCode;
-            if ((int)opTypeCode <= (int)TypeCode.Int32)
+            // Check for Int128 and UInt128 types first, since they have TypeCode.Object
+            if (target.LimitType == typeof(Int128) || arg.LimitType == typeof(Int128))
             {
-                opImplType = typeof(IntOps);
-                argType = typeof(int);
+                opImplType = typeof(Int128Ops);
+                argType = typeof(Int128);
             }
-            else if ((int)opTypeCode <= (int)TypeCode.UInt32)
+            else if (target.LimitType == typeof(UInt128) || arg.LimitType == typeof(UInt128))
             {
-                Diagnostics.Assert(opTypeCode == TypeCode.UInt32, "opType must be UInt32 if it gets in this code path");
-
-                // If one of the operands is signed, we need to promote to long if the value is negative, but
-                // we can stay w/ an integer if the value is positive.  Either way, we'll need a type test.
-                if (LanguagePrimitives.IsSignedInteger(leftTypeCode))
-                {
-                    target = FigureSignedUnsignedInt(target, leftTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
-                }
-                else if (LanguagePrimitives.IsSignedInteger(rightTypeCode))
-                {
-                    arg = FigureSignedUnsignedInt(arg, rightTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
-                }
-
-                if (opImplType == null)
-                {
-                    opImplType = typeof(UIntOps);
-                    argType = typeof(uint);
-                }
-            }
-            else if ((int)opTypeCode <= (int)TypeCode.Int64)
-            {
-                opImplType = typeof(LongOps);
-                argType = typeof(long);
-            }
-            else if ((int)opTypeCode <= (int)TypeCode.UInt64)
-            {
-                Diagnostics.Assert(opTypeCode == TypeCode.UInt64, "opType must be UInt64 if it gets in this code path");
-
-                if (LanguagePrimitives.IsSignedInteger(leftTypeCode))
-                {
-                    target = FigureSignedUnsignedInt(target, leftTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
-                }
-                else if (LanguagePrimitives.IsSignedInteger(rightTypeCode))
-                {
-                    arg = FigureSignedUnsignedInt(arg, rightTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
-                }
-
-                if (opImplType == null)
-                {
-                    opImplType = typeof(ULongOps);
-                    argType = typeof(ulong);
-                }
-            }
-            else if (opTypeCode == TypeCode.Decimal)
-            {
-                if (methodName.StartsWith("Compare", StringComparison.Ordinal))
-                {
-                    // Casting a double to decimal can overflow.  Instead, we are "smarter" and avoid
-                    // the cast, and allow the comparison.  There may be a precision problem with values
-                    // near Decimal.MaxValue or Decimal.MinValue, but V2 allowed the comparisons
-                    // w/o errors, so we continue to do so.
-                    if (LanguagePrimitives.IsFloating(leftTypeCode))
-                    {
-                        return new DynamicMetaObject(
-                            Expression.Call(typeof(DecimalOps).GetMethod(methodName + "1", BindingFlags.NonPublic | BindingFlags.Static),
-                                            target.Expression.Cast(target.LimitType).Cast(typeof(double)),
-                                            arg.Expression.Cast(arg.LimitType).Cast(typeof(decimal))),
-                            target.CombineRestrictions(arg));
-                    }
-
-                    if (LanguagePrimitives.IsFloating(rightTypeCode))
-                    {
-                        return new DynamicMetaObject(
-                            Expression.Call(typeof(DecimalOps).GetMethod(methodName + "2", BindingFlags.NonPublic | BindingFlags.Static),
-                                            target.Expression.Cast(target.LimitType).Cast(typeof(decimal)),
-                                            arg.Expression.Cast(arg.LimitType).Cast(typeof(double))),
-                            target.CombineRestrictions(arg));
-                    }
-                }
-
-                opImplType = typeof(DecimalOps);
-                argType = typeof(decimal);
+                opImplType = typeof(UInt128Ops);
+                argType = typeof(UInt128);
             }
             else
             {
-                opImplType = typeof(DoubleOps);
-                argType = typeof(double);
+                TypeCode leftTypeCode = LanguagePrimitives.GetTypeCode(target.LimitType);
+                TypeCode rightTypeCode = LanguagePrimitives.GetTypeCode(arg.LimitType);
+                TypeCode opTypeCode = (int)leftTypeCode >= (int)rightTypeCode ? leftTypeCode : rightTypeCode;
+                if ((int)opTypeCode <= (int)TypeCode.Int32)
+                {
+                    opImplType = typeof(IntOps);
+                    argType = typeof(int);
+                }
+                else if ((int)opTypeCode <= (int)TypeCode.UInt32)
+                {
+                    Diagnostics.Assert(opTypeCode == TypeCode.UInt32, "opType must be UInt32 if it gets in this code path");
+
+                    // If one of the operands is signed, we need to promote to long if the value is negative, but
+                    // we can stay w/ an integer if the value is positive.  Either way, we'll need a type test.
+                    if (LanguagePrimitives.IsSignedInteger(leftTypeCode))
+                    {
+                        target = FigureSignedUnsignedInt(target, leftTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
+                    }
+                    else if (LanguagePrimitives.IsSignedInteger(rightTypeCode))
+                    {
+                        arg = FigureSignedUnsignedInt(arg, rightTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
+                    }
+
+                    if (opImplType == null)
+                    {
+                        opImplType = typeof(UIntOps);
+                        argType = typeof(uint);
+                    }
+                }
+                else if ((int)opTypeCode <= (int)TypeCode.Int64)
+                {
+                    opImplType = typeof(LongOps);
+                    argType = typeof(long);
+                }
+                else if ((int)opTypeCode <= (int)TypeCode.UInt64)
+                {
+                    Diagnostics.Assert(opTypeCode == TypeCode.UInt64, "opType must be UInt64 if it gets in this code path");
+
+                    if (LanguagePrimitives.IsSignedInteger(leftTypeCode))
+                    {
+                        target = FigureSignedUnsignedInt(target, leftTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
+                    }
+                    else if (LanguagePrimitives.IsSignedInteger(rightTypeCode))
+                    {
+                        arg = FigureSignedUnsignedInt(arg, rightTypeCode, opTypeCode, out opImplType, out argType, out fallbackToDoubleInCaseOfOverflow);
+                    }
+
+                    if (opImplType == null)
+                    {
+                        opImplType = typeof(ULongOps);
+                        argType = typeof(ulong);
+                    }
+                }
+                else if (opTypeCode == TypeCode.Decimal)
+                {
+                    if (methodName.StartsWith("Compare", StringComparison.Ordinal))
+                    {
+                        // Casting a double to decimal can overflow.  Instead, we are "smarter" and avoid
+                        // the cast, and allow the comparison.  There may be a precision problem with values
+                        // near Decimal.MaxValue or Decimal.MinValue, but V2 allowed the comparisons
+                        // w/o errors, so we continue to do so.
+                        if (LanguagePrimitives.IsFloating(leftTypeCode))
+                        {
+                            return new DynamicMetaObject(
+                                Expression.Call(typeof(DecimalOps).GetMethod(methodName + "1", BindingFlags.NonPublic | BindingFlags.Static),
+                                                target.Expression.Cast(target.LimitType).Cast(typeof(double)),
+                                                arg.Expression.Cast(arg.LimitType).Cast(typeof(decimal))),
+                                target.CombineRestrictions(arg));
+                        }
+
+                        if (LanguagePrimitives.IsFloating(rightTypeCode))
+                        {
+                            return new DynamicMetaObject(
+                                Expression.Call(typeof(DecimalOps).GetMethod(methodName + "2", BindingFlags.NonPublic | BindingFlags.Static),
+                                                target.Expression.Cast(target.LimitType).Cast(typeof(decimal)),
+                                                arg.Expression.Cast(arg.LimitType).Cast(typeof(double))),
+                                target.CombineRestrictions(arg));
+                        }
+                    }
+
+                    opImplType = typeof(DecimalOps);
+                    argType = typeof(decimal);
+                }
+                else
+                {
+                    opImplType = typeof(DoubleOps);
+                    argType = typeof(double);
+                }
             }
 
             Expression expr =
