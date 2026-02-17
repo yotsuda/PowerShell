@@ -421,4 +421,32 @@ Describe 'Select-Object behaviour with hashtable entries and actual members' -Ta
 
         $hashtable | Select-Object -ExpandProperty Count | Should -Be 3
     }
+
+    It 'should select properties with wildcard characters using escaped names' {
+        # Test with square brackets
+        $obj = [PSCustomObject]@{ 'Foo[]' = 'bar' }
+        $escaped = [WildcardPattern]::Escape('Foo[]')
+        $result = $obj | Select-Object $escaped
+        $result.'Foo[]' | Should -Be 'bar'
+
+        # Test with asterisk
+        $obj2 = [PSCustomObject]@{ 'Test*' = 'value1'; 'TestOther' = 'value2' }
+        $escaped2 = [WildcardPattern]::Escape('Test*')
+        $result2 = $obj2 | Select-Object $escaped2
+        $result2.'Test*' | Should -Be 'value1'
+        $result2.PSObject.Properties.Name | Should -Be 'Test*'
+        $result2.PSObject.Properties.Name | Should -Not -Contain 'TestOther'
+
+        # Test with question mark
+        $obj3 = [PSCustomObject]@{ 'Name?' = 'value' }
+        $escaped3 = [WildcardPattern]::Escape('Name?')
+        $result3 = $obj3 | Select-Object $escaped3
+        $result3.'Name?' | Should -Be 'value'
+
+        # Test with multiple wildcard characters
+        $obj4 = [PSCustomObject]@{ 'Prop[*]?' = 'complex' }
+        $escaped4 = [WildcardPattern]::Escape('Prop[*]?')
+        $result4 = $obj4 | Select-Object $escaped4
+        $result4.'Prop[*]?' | Should -Be 'complex'
+    }
 }
