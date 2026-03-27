@@ -254,4 +254,32 @@ Describe "Test-Path" -Tags "CI" {
         Test-Path -Path $newFilePath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
         Test-Path -Path $newDirPath -NewerThan $twoDaysOld -OlderThan $oneDayOld | Should -BeFalse
     }
+
+    It "Should handle UTC DateTimeKind correctly with NewerThan" {
+        $utcFilePath = Join-Path -Path $testdirectory -ChildPath utcfile
+        $utcFile = New-Item -Path $utcFilePath -ItemType File
+        Start-Sleep -Milliseconds 100
+        $utcTimePast = ([datetime]::UtcNow).AddMinutes(-1)
+        Test-Path -Path $utcFilePath -NewerThan $utcTimePast | Should -BeTrue
+        Remove-Item -Path $utcFilePath -Force
+    }
+
+    It "Should handle UTC DateTimeKind correctly with OlderThan" {
+        $utcFilePath = Join-Path -Path $testdirectory -ChildPath utcfile2
+        $utcFile = New-Item -Path $utcFilePath -ItemType File
+        Start-Sleep -Milliseconds 100
+        $utcTimeFuture = ([datetime]::UtcNow).AddMinutes(1)
+        Test-Path -Path $utcFilePath -OlderThan $utcTimeFuture | Should -BeTrue
+        Remove-Item -Path $utcFilePath -Force
+    }
+
+    It "Should handle UTC DateTimeKind correctly with both NewerThan and OlderThan" {
+        $utcFilePath = Join-Path -Path $testdirectory -ChildPath utcfile3
+        $utcFile = New-Item -Path $utcFilePath -ItemType File
+        Start-Sleep -Milliseconds 100
+        $utcTimePast = ([datetime]::UtcNow).AddMinutes(-1)
+        $utcTimeFuture = ([datetime]::UtcNow).AddMinutes(1)
+        Test-Path -Path $utcFilePath -NewerThan $utcTimePast -OlderThan $utcTimeFuture | Should -BeTrue
+        Remove-Item -Path $utcFilePath -Force
+    }
 }
